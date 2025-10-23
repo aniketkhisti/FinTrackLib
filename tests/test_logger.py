@@ -70,3 +70,30 @@ def test_empty_logger():
     assert logger.total_expenses() == 0.0
     assert len(logger.get_all_transactions()) == 0
 
+
+def test_duplicate_detection():
+    """Test that duplicate expenses are detected."""
+    logger = ExpenseLogger()
+    logger.log_expense(20.0, "Chai")
+    
+    with pytest.raises(ValueError, match="Duplicate transaction detected"):
+        logger.log_expense(20.0, "Chai")
+
+
+def test_allow_duplicates_parameter():
+    """Test that duplicates can be allowed when specified."""
+    logger = ExpenseLogger()
+    logger.log_expense(20.0, "Chai")
+    logger.log_expense(20.0, "Chai", allow_duplicates=True)
+    
+    assert len(logger.get_all_transactions()) == 2
+
+
+def test_not_duplicate_different_amount():
+    """Test that different amounts are not considered duplicates."""
+    logger = ExpenseLogger()
+    logger.log_expense(20.0, "Chai")
+    logger.log_expense(25.0, "Chai")  # Different amount
+    
+    assert len(logger.get_all_transactions()) == 2
+
