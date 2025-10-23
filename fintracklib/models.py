@@ -12,11 +12,13 @@ class Transaction:
         amount: Transaction amount in INR
         description: Description of the expense
         date: Transaction date (defaults to now)
+        category: Expense category (optional)
         id: Unique identifier (assigned by logger)
     """
     amount: float
     description: str
     date: datetime = field(default_factory=datetime.now)
+    category: Optional[str] = None
     id: Optional[int] = None
     
     def __post_init__(self):
@@ -30,6 +32,7 @@ class Transaction:
             'id': self.id,
             'amount': self.amount,
             'description': self.description,
+            'category': self.category,
             'date': self.date.isoformat()
         }
     
