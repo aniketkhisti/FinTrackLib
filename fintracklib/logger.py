@@ -17,6 +17,7 @@ class ExpenseLogger:
         self._next_id = 1
     
     def log_expense(self, amount: float, description: str, 
+                    category: Optional[str] = None,
                     date: Optional[datetime] = None,
                     allow_duplicates: bool = False):
         """Log a new expense transaction.
@@ -24,6 +25,7 @@ class ExpenseLogger:
         Args:
             amount: Expense amount in INR
             description: Expense description
+            category: Expense category (optional)
             date: Transaction date (defaults to now)
             allow_duplicates: If False, raises error for duplicate transactions
             
@@ -39,6 +41,7 @@ class ExpenseLogger:
         txn = Transaction(
             amount=amount,
             description=description,
+            category=category,
             date=date,
             id=self._next_id
         )
