@@ -1,4 +1,5 @@
 """Budget management and tracking."""
+import warnings
 from typing import Dict, List, Optional
 from fintracklib.models import Budget
 
@@ -49,12 +50,19 @@ class BudgetManager:
     def record_expense(self, category: str, amount: float):
         """Record an expense against a budget.
         
+        Issues a warning if no budget exists for the category.
+        
         Args:
             category: Category name
             amount: Expense amount
         """
         if category in self.budgets:
             self.budgets[category].add_expense(amount)
+        else:
+            warnings.warn(
+                f"No budget found for category '{category}'. Expense of ₹{amount} not tracked.",
+                UserWarning
+            )
     
     def get_all_budgets(self) -> List[Budget]:
         """Get list of all budgets.

@@ -1,5 +1,6 @@
 """Tests for budget manager."""
 import pytest
+import warnings
 from fintracklib.budgeter import BudgetManager
 
 
@@ -50,10 +51,42 @@ def test_record_expense():
 
 
 def test_record_expense_no_budget():
-    """Test recording expense for non-existent budget."""
+    """Test recording expense for non-existent budget issues warning."""
     manager = BudgetManager()
-    # Should not raise error, just silently ignore
-    manager.record_expense("NonExistent", 100.0)
+    
+    # Should issue a warning
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        manager.record_expense("NonExistent", 100.0)
+        
+        assert len(w) == 1
+        assert issubclass(w[0].category, UserWarning)
+        assert "No budget found" in str(w[0].message)
+        assert "NonExistent" in str(w[0].message)
+
+
+def test_warning_contains_amount():
+    """Test that warning includes expense amount."""
+    manager = BudgetManager()
+    
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        manager.record_expense("Utilities", 500.0)
+        
+        assert "₹500" in str(w[0].message) or "500.0" in str(w[0].message)
+
+
+def test_no_warning_for_existing_budget():
+    """Test that no warning is issued when budget exists."""
+    manager = BudgetManager()
+    manager.create_budget("Transport", 2000.0)
+    
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        manager.record_expense("Transport", 150.0)
+        
+        # No warnings should be issued
+        assert len(w) == 0
 
 
 def test_get_all_budgets():
