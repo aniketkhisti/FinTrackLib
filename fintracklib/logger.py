@@ -17,19 +17,21 @@ class ExpenseLogger:
         self._next_id = 1
     
     def log_expense(self, amount: float, description: str, 
-                    date: Optional[datetime] = None):
+                    date: Optional[datetime] = None,
+                    allow_duplicates: bool = False):
         """Log a new expense transaction.
         
         Args:
             amount: Expense amount in INR
             description: Expense description
             date: Transaction date (defaults to now)
+            allow_duplicates: If False, raises error for duplicate transactions
             
         Returns:
             The created Transaction object
             
         Raises:
-            ValueError: If amount is negative
+            ValueError: If amount is negative or duplicate detected
         """
         if date is None:
             date = datetime.now()
@@ -40,6 +42,14 @@ class ExpenseLogger:
             date=date,
             id=self._next_id
         )
+        
+        # Check for duplicates
+        if not allow_duplicates:
+            for existing in self.transactions:
+                if txn.matches(existing):
+                    raise ValueError(
+                        f"Duplicate transaction detected: {description} for ₹{amount}"
+                    )
         
         self.transactions.append(txn)
         self._next_id += 1

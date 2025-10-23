@@ -32,4 +32,24 @@ class Transaction:
             'description': self.description,
             'date': self.date.isoformat()
         }
+    
+    def matches(self, other):
+        """Check if this transaction is a duplicate of another.
+        
+        Two transactions are considered duplicates if they have the same
+        amount, description, and occur on the same day.
+        
+        Args:
+            other: Another Transaction object
+            
+        Returns:
+            True if transactions are duplicates, False otherwise
+        """
+        if not isinstance(other, Transaction):
+            return False
+        return (
+            self.amount == other.amount and
+            self.description == other.description and
+            self.date.date() == other.date.date()
+        )
 
