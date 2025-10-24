@@ -39,21 +39,32 @@ class Categorizer:
         """
         return self.valid_categories.copy()
     
-    def categorize_transaction(self, transaction: Transaction, category: str):
+    def categorize_transaction(self, transaction: Transaction, category: str,
+                              overwrite: bool = False):
         """Manually assign a category to a transaction.
         
         Args:
             transaction: Transaction to categorize
             category: Category to assign
+            overwrite: If False and transaction already has a category,
+                      raises ValueError. Set to True to allow category changes.
             
         Raises:
-            ValueError: If category is not valid
+            ValueError: If category is not valid or if transaction already
+                       has a category and overwrite=False
         """
         if not self.is_valid_category(category):
             raise ValueError(
                 f"Invalid category '{category}'. "
                 f"Valid categories: {', '.join(self.valid_categories)}"
             )
+        
+        if transaction.category is not None and not overwrite:
+            raise ValueError(
+                f"Transaction already has category '{transaction.category}'. "
+                f"Use overwrite=True to change it."
+            )
+        
         transaction.category = category
     
     def auto_categorize(self, transaction: Transaction) -> bool:

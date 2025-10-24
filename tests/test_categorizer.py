@@ -164,3 +164,28 @@ def test_categorize_then_auto_categorize():
     categorizer.auto_categorize(txn)
     assert txn.category == "Street Food"
 
+
+def test_overwrite_protection():
+    """Test that categorizing an already-categorized transaction raises error."""
+    categorizer = Categorizer()
+    
+    txn = Transaction(amount=150.0, description="Auto fare", category="Transport")
+    
+    # Should raise error when trying to change category without overwrite=True
+    with pytest.raises(ValueError, match="already has category"):
+        categorizer.categorize_transaction(txn, "Shopping")
+    
+    # Category should remain unchanged
+    assert txn.category == "Transport"
+
+
+def test_overwrite_allowed_with_flag():
+    """Test that overwrite=True allows changing category."""
+    categorizer = Categorizer()
+    
+    txn = Transaction(amount=150.0, description="Auto fare", category="Transport")
+    
+    # Should work with overwrite=True
+    categorizer.categorize_transaction(txn, "Shopping", overwrite=True)
+    assert txn.category == "Shopping"
+
