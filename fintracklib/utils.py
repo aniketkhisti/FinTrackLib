@@ -1,6 +1,7 @@
 """Utility functions for formatting and calculations."""
 from datetime import datetime
 from typing import Optional
+import re
 
 
 def format_inr(amount: float) -> str:
@@ -132,4 +133,135 @@ def format_amount_in_words(amount: float) -> str:
     else:
         # Crores
         return f"₹{amount/10000000:.1f} crores"
+
+
+def parse_inr(inr_string: str) -> float:
+    """Parse an INR formatted string to float.
+    
+    Handles Indian comma placement and rupee symbol.
+    
+    Args:
+        inr_string: INR formatted string like "₹1,00,000.00"
+        
+    Returns:
+        Float value of the amount
+        
+    Raises:
+        ValueError: If string is not a valid INR format
+        
+    Examples:
+        >>> parse_inr("₹1,00,000.00")
+        100000.0
+        >>> parse_inr("₹2,50,000")
+        250000.0
+    """
+    if not inr_string or not isinstance(inr_string, str):
+        raise ValueError("Invalid INR string: must be a non-empty string")
+    
+    # Remove rupee symbol and whitespace
+    cleaned = inr_string.strip().replace('₹', '').replace(' ', '')
+    
+    # Remove commas (Indian or Western)
+    cleaned = cleaned.replace(',', '')
+    
+    try:
+        amount = float(cleaned)
+        return amount
+    except ValueError:
+        raise ValueError(f"Invalid INR format: '{inr_string}'")
+
+
+def validate_inr_format(inr_string: str) -> bool:
+    """Validate if a string is in proper INR format.
+    
+    Checks for:
+    - Rupee symbol (₹) 
+    - Proper Indian comma placement
+    - Valid numeric value
+    
+    Args:
+        inr_string: String to validate
+        
+    Returns:
+        True if valid INR format, False otherwise
+        
+    Examples:
+        >>> validate_inr_format("₹1,00,000.00")
+        True
+        >>> validate_inr_format("₹50,000")
+        True
+        >>> validate_inr_format("1,00,000")
+        False
+    """
+    if not inr_string or not isinstance(inr_string, str):
+        return False
+    
+    inr_string = inr_string.strip()
+    
+    # Must start with rupee symbol
+    if not inr_string.startswith('₹'):
+        return False
+    
+    # Remove rupee symbol
+    amount_part = inr_string[1:].strip()
+    
+    # Pattern for Indian numbering: last 3 digits, then groups of 2
+    # Allow optional decimals
+    pattern = r'^-?\d{1,2}(,\d{2})*,\d{3}(\.\d{1,2})?$|^-?\d{1,3}(\.\d{1,2})?$'
+    
+    return bool(re.match(pattern, amount_part))
+
+
+def convert_to_lakhs(amount: float) -> float:
+    """Convert amount to lakhs.
+    
+    Args:
+        amount: Amount in rupees
+        
+    Returns:
+        Amount in lakhs (1 lakh = 1,00,000)
+        
+    Examples:
+        >>> convert_to_lakhs(250000)
+        2.5
+        >>> convert_to_lakhs(1000000)
+        10.0
+    """
+    return amount / 100000
+
+
+def convert_to_crores(amount: float) -> float:
+    """Convert amount to crores.
+    
+    Args:
+        amount: Amount in rupees
+        
+    Returns:
+        Amount in crores (1 crore = 1,00,00,000)
+        
+    Examples:
+        >>> convert_to_crores(5000000)
+        0.5
+        >>> convert_to_crores(10000000)
+        1.0
+    """
+    return amount / 10000000
+
+
+def paise_to_rupees(paise: int) -> float:
+    """Convert paise to rupees.
+    
+    Args:
+        paise: Amount in paise
+        
+    Returns:
+        Amount in rupees (100 paise = 1 rupee)
+        
+    Examples:
+        >>> paise_to_rupees(100)
+        1.0
+        >>> paise_to_rupees(250)
+        2.5
+    """
+    return paise / 100
 
