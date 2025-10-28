@@ -36,3 +36,6 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# PR body templates (local use only)
+pr_body_*.txt
