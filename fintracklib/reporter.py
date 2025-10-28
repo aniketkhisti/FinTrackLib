@@ -16,8 +16,48 @@ class Reporter:
         """Initialize the reporter."""
         pass
     
+    def calculate_gst_components(self, amount: float, intra_state: bool = True) -> dict:
+        """Calculate GST components for an amount.
+        
+        For Indian tax structure:
+        - Intra-state: CGST 9% + SGST 9% = 18%
+        - Inter-state: IGST 18%
+        
+        Args:
+            amount: Base amount before GST
+            intra_state: True for intra-state (CGST+SGST), False for inter-state (IGST)
+            
+        Returns:
+            Dictionary with GST breakdown
+        """
+        total_gst = amount * 0.18
+        
+        if intra_state:
+            # Split into CGST and SGST
+            cgst = total_gst / 2
+            sgst = total_gst / 2
+            return {
+                'type': 'intra_state',
+                'cgst': cgst,
+                'sgst': sgst,
+                'igst': 0.0,
+                'total_gst': total_gst,
+                'amount_with_gst': amount + total_gst
+            }
+        else:
+            # Inter-state uses IGST
+            return {
+                'type': 'inter_state',
+                'cgst': 0.0,
+                'sgst': 0.0,
+                'igst': total_gst,
+                'total_gst': total_gst,
+                'amount_with_gst': amount + total_gst
+            }
+    
     def expense_summary(self, transactions: List[Transaction], 
-                       include_gst: bool = False) -> str:
+                       include_gst: bool = False, intra_state: bool = True,
+                       gst_by_category: bool = False) -> str:
         """Generate a formatted expense summary report.
         
         Groups transactions by category and calculates totals.
@@ -25,6 +65,8 @@ class Reporter:
         Args:
             transactions: List of Transaction objects
             include_gst: If True, adds GST calculation (18%)
+            intra_state: True for CGST+SGST, False for IGST
+            gst_by_category: If True, shows GST breakdown for each category
             
         Returns:
             Formatted report string
@@ -58,17 +100,32 @@ class Reporter:
                 category_total += txn.amount
             
             lines.append(f"  Subtotal: {format_inr(category_total)}")
+            
+            # Show GST breakdown per category if requested
+            if include_gst and gst_by_category:
+                gst_info = self.calculate_gst_components(category_total, intra_state)
+                if intra_state:
+                    lines.append(f"  CGST (9%): {format_inr(gst_info['cgst'])}")
+                    lines.append(f"  SGST (9%): {format_inr(gst_info['sgst'])}")
+                else:
+                    lines.append(f"  IGST (18%): {format_inr(gst_info['igst'])}")
+                lines.append(f"  Total with GST: {format_inr(gst_info['amount_with_gst'])}")
+            
             lines.append("")
             total += category_total
         
         lines.append("-" * 50)
         lines.append(f"Total Expenses: {format_inr(total)}")
         
+        # GST is 18% in India for many goods/services
         if include_gst:
-            gst_amount = total * 0.18
-            total_with_gst = total + gst_amount
-            lines.append(f"GST (18%): {format_inr(gst_amount)}")
-            lines.append(f"Total with GST: {format_inr(total_with_gst)}")
+            gst_info = self.calculate_gst_components(total, intra_state)
+            if intra_state:
+                lines.append(f"CGST (9%): {format_inr(gst_info['cgst'])}")
+                lines.append(f"SGST (9%): {format_inr(gst_info['sgst'])}")
+            else:
+                lines.append(f"IGST (18%): {format_inr(gst_info['igst'])}")
+            lines.append(f"Total with GST: {format_inr(gst_info['amount_with_gst'])}")
         
         lines.append("=" * 50)
         
