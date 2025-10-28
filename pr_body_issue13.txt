@@ -1,0 +1,52 @@
+Fixes #13
+
+## Changes
+
+- Added `calculate_gst_components()` method for CGST/SGST/IGST breakdown
+- Enhanced `expense_summary()` with GST breakdown support
+  - New parameter `intra_state` for CGST+SGST vs IGST selection
+  - New parameter `gst_by_category` for per-category GST breakdown
+- Support for Indian tax structure:
+  - Intra-state transactions: CGST 9% + SGST 9% = 18%
+  - Inter-state transactions: IGST 18%
+- Added 5 comprehensive tests for GST functionality
+- Updated existing test to match new format
+
+## Test Results
+
+All 76 tests passing (70 existing + 1 updated + 5 new)
+
+## Example Usage
+
+```python
+from fintracklib import Reporter
+
+reporter = Reporter()
+
+# Intra-state with CGST/SGST breakdown
+report = reporter.expense_summary(
+    transactions, 
+    include_gst=True, 
+    intra_state=True,
+    gst_by_category=True
+)
+# Shows: CGST (9%): ₹450.00, SGST (9%): ₹450.00
+
+# Inter-state with IGST
+report = reporter.expense_summary(
+    transactions,
+    include_gst=True,
+    intra_state=False
+)
+# Shows: IGST (18%): ₹900.00
+```
+
+## Files Modified
+- `fintracklib/reporter.py` - Added ~38 LOC for GST components calculation
+- `tests/test_reporter.py` - Added ~70 LOC for 5 new tests + 1 updated test
+
+## Indian Tax Context
+- Correctly implements Indian GST structure (CGST/SGST/IGST)
+- All amounts properly formatted with INR notation
+- Handles large amounts in lakhs correctly (tested with ₹2.5L)
+

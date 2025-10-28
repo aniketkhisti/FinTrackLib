@@ -1,4 +1,6 @@
 """Utility functions for formatting and calculations."""
+from datetime import datetime
+from typing import Optional
 
 
 def format_inr(amount: float) -> str:
@@ -61,4 +63,73 @@ def format_inr(amount: float) -> str:
     result = f"₹{formatted}.{decimal_part}"
     
     return f"-{result}" if is_negative else result
+
+
+def get_fiscal_year(date: Optional[datetime] = None) -> str:
+    """Get Indian fiscal year (April to March) for a given date.
+    
+    Indian fiscal year runs from April 1st to March 31st.
+    Format: FY2024-25 means April 2024 to March 2025.
+    
+    Args:
+        date: Date to get fiscal year for (defaults to now)
+        
+    Returns:
+        Fiscal year string in FY2024-25 format
+        
+    Examples:
+        >>> get_fiscal_year(datetime(2024, 10, 15))
+        'FY2024-25'
+        >>> get_fiscal_year(datetime(2025, 2, 10))
+        'FY2024-25'
+    """
+    if date is None:
+        date = datetime.now()
+    
+    if date.month >= 4:
+        # April onwards: current year to next year
+        start_year = date.year
+        end_year = date.year + 1
+    else:
+        # Jan-March: previous year to current year
+        start_year = date.year - 1
+        end_year = date.year
+    
+    return f"FY{start_year}-{str(end_year)[-2:]}"
+
+
+def format_amount_in_words(amount: float) -> str:
+    """Convert amount to Indian word format for readability.
+    
+    Converts amounts to shorthand Indian notation:
+    - Below 1000: Exact amount
+    - 1K to 99K: Thousands
+    - 1L to 99L: Lakhs
+    - 1Cr+: Crores
+    
+    Args:
+        amount: Amount to format
+        
+    Returns:
+        Human-readable amount string
+        
+    Examples:
+        >>> format_amount_in_words(500)
+        '₹500'
+        >>> format_amount_in_words(25000)
+        '₹25.0K'
+        >>> format_amount_in_words(250000)
+        '₹2.5 lakhs'
+    """
+    if amount < 1000:
+        return f"₹{amount:.0f}"
+    elif amount < 100000:
+        # Thousands
+        return f"₹{amount/1000:.1f}K"
+    elif amount < 10000000:
+        # Lakhs
+        return f"₹{amount/100000:.1f} lakhs"
+    else:
+        # Crores
+        return f"₹{amount/10000000:.1f} crores"
 
