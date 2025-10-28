@@ -59,11 +59,13 @@ def test_expense_summary_empty(reporter):
 
 
 def test_expense_summary_with_gst(reporter, sample_transactions):
-    """Test expense summary with GST calculation."""
+    """Test expense summary with GST calculation (CGST+SGST by default)."""
     report = reporter.expense_summary(sample_transactions, include_gst=True)
     
     assert "Total Expenses: ₹5,185.00" in report
-    assert "GST (18%)" in report
+    # Default is intra-state, so CGST and SGST
+    assert "CGST (9%)" in report
+    assert "SGST (9%)" in report
     assert "Total with GST:" in report
     # 5185 * 1.18 = 6118.30
     assert "₹6,118.30" in report
@@ -174,4 +176,75 @@ def test_monthly_report_different_months(reporter):
     assert "March 2025" in mar_report
     assert "Holi" in mar_report
     assert "Diwali" not in mar_report
+
+
+def test_calculate_gst_components_intra_state(reporter):
+    """Test GST components calculation for intra-state transactions."""
+    amount = 5000.0
+    gst_info = reporter.calculate_gst_components(amount, intra_state=True)
+    
+    assert gst_info['type'] == 'intra_state'
+    assert gst_info['cgst'] == 450.0  # 9% of 5000
+    assert gst_info['sgst'] == 450.0  # 9% of 5000
+    assert gst_info['igst'] == 0.0
+    assert gst_info['total_gst'] == 900.0  # 18% total
+    assert gst_info['amount_with_gst'] == 5900.0
+
+
+def test_calculate_gst_components_inter_state(reporter):
+    """Test GST components calculation for inter-state transactions."""
+    amount = 5000.0
+    gst_info = reporter.calculate_gst_components(amount, intra_state=False)
+    
+    assert gst_info['type'] == 'inter_state'
+    assert gst_info['cgst'] == 0.0
+    assert gst_info['sgst'] == 0.0
+    assert gst_info['igst'] == 900.0  # 18% of 5000
+    assert gst_info['total_gst'] == 900.0
+    assert gst_info['amount_with_gst'] == 5900.0
+
+
+def test_expense_summary_with_gst_breakdown_by_category(reporter, sample_transactions):
+    """Test expense summary with GST breakdown by category."""
+    report = reporter.expense_summary(
+        sample_transactions, 
+        include_gst=True, 
+        intra_state=True,
+        gst_by_category=True
+    )
+    
+    assert "CGST (9%)" in report
+    assert "SGST (9%)" in report
+    assert "IGST" not in report
+    # Should show per-category GST breakdown
+    assert report.count("CGST") >= 2  # At least for categories + total
+
+
+def test_expense_summary_with_igst(reporter, sample_transactions):
+    """Test expense summary with IGST for inter-state."""
+    report = reporter.expense_summary(
+        sample_transactions,
+        include_gst=True,
+        intra_state=False
+    )
+    
+    assert "IGST (18%)" in report
+    assert "CGST" not in report
+    assert "SGST" not in report
+
+
+def test_gst_with_large_amounts_in_lakhs(reporter):
+    """Test GST calculation and formatting for large amounts (lakhs)."""
+    transactions = [
+        Transaction(amount=250000.0, description="Home appliances", category="Shopping"),
+    ]
+    
+    report = reporter.expense_summary(transactions, include_gst=True, intra_state=True)
+    
+    # Total: 2.5 lakhs
+    assert "₹2,50,000.00" in report
+    # CGST: 9% of 2.5L = 22,500
+    assert "₹22,500.00" in report
+    # Total with GST: 2.95 lakhs
+    assert "₹2,95,000.00" in report
 
