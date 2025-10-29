@@ -99,26 +99,6 @@ fy = get_fiscal_year()  # Returns "FY2024-25"
 lakhs = convert_to_lakhs(250000)  # Returns 2.5
 ```
 
-## Project structure
-
-Main modules:
-- `models.py` - Core data models (Transaction, Budget, etc.)
-- `logger.py` - ExpenseLogger for tracking expenses
-- `budgeter.py` - Budget management
-- `categorizer.py` - Auto-categorization with Indian categories
-- `reporter.py` - Report generation with GST breakdown
-- `analytics.py` - Spending analysis and insights
-- `exporter.py` - CSV/JSON export with Indian date formats
-- `utils.py` - INR formatting, parsing, conversions
-
-Future modules (not yet implemented):
-- `importer.py` - Import from CSV/JSON
-- `recurring.py` - Recurring expenses (rent, bills)
-- `savings.py` - Savings goals tracking
-- `tax.py` - Income tax calculator
-- `filter.py` - Transaction filtering
-- `tags.py` - Tag system
-
 ## Testing
 
 ```bash
@@ -126,34 +106,6 @@ pytest                              # Run all tests
 pytest --cov=fintracklib tests/    # With coverage
 pytest tests/test_reporter.py -v   # Specific module
 ```
-
-Currently has 120+ tests covering all modules.
-
-## Development status
-
-Version 0.7.0 - Active development
-
-Completed so far:
-- Expense logging with duplicate detection
-- Budget management
-- Category system with auto-categorization  
-- Reporting with INR formatting
-- GST breakdown (CGST/SGST/IGST)
-- Analytics and festival spending tracking
-- INR parsing and validation
-- Data export (CSV/JSON)
-
-Still working on:
-- Data import with validation
-- Recurring expenses (rent, bills)
-- Savings goals
-- Income tax calculator
-- Transaction filtering
-- Tags system
-- Income tracking
-
-About 13 more features planned. See GITHUB_INSTRUCTIONS.md for full roadmap.
-
 ## Why Indian context matters
 
 Most finance libraries assume US/Western formats. This causes issues:
@@ -181,13 +133,6 @@ IGST 18%                  # inter-state (Maharashtra to Delhi)
 "Street Food"  # Chai, samosa, vada pav
 "Transport"    # Auto rickshaw, metro, cab
 ```
-
-## Documentation
-
-See these files for more details:
-- `GITHUB_INSTRUCTIONS.md` - Full setup and development roadmap
-- `DEVELOPMENT.md` - Implementation details
-- `PROJECT_SUMMARY.md` - Project overview
 
 ## License
 
