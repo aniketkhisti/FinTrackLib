@@ -7,7 +7,7 @@ Indian categories, and budget management.
 
 __version__ = "0.8.0"
 
-from fintracklib.models import Transaction, Budget, RecurringExpense
+from fintracklib.models import Transaction, Budget, RecurringExpense, SavingsGoal
 from fintracklib.logger import ExpenseLogger
 from fintracklib.budgeter import BudgetManager
 from fintracklib.categorizer import Categorizer
@@ -15,6 +15,7 @@ from fintracklib.reporter import Reporter
 from fintracklib.analytics import Analytics
 from fintracklib.exporter import TransactionExporter, BudgetExporter
 from fintracklib.recurring import RecurringExpenseManager
+from fintracklib.savings import SavingsGoalManager
 from fintracklib.utils import (
     format_inr,
     get_fiscal_year,
@@ -30,6 +31,7 @@ __all__ = [
     'Transaction',
     'Budget',
     'RecurringExpense',
+    'SavingsGoal',
     'ExpenseLogger',
     'BudgetManager',
     'Categorizer',
@@ -38,6 +40,7 @@ __all__ = [
     'TransactionExporter',
     'BudgetExporter',
     'RecurringExpenseManager',
+    'SavingsGoalManager',
     'format_inr',
     'get_fiscal_year',
     'format_amount_in_words',

@@ -199,3 +199,136 @@ class RecurringExpense:
             return datetime(year, current.month, current.day, current.hour, current.minute)
         
         return current
+
+
+@dataclass
+class SavingsGoal:
+    """Represents a savings goal for major life events.
+    
+    Attributes:
+        name: Goal name (e.g., "Wedding", "House down payment")
+        target_amount: Target amount to save in INR
+        current_saved: Amount currently saved
+        deadline: Target date to achieve the goal
+        id: Unique identifier
+    """
+    name: str
+    target_amount: float
+    current_saved: float = 0.0
+    deadline: datetime = field(default_factory=lambda: datetime.now() + timedelta(days=365))
+    id: Optional[int] = None
+    
+    def __post_init__(self):
+        """Validate savings goal data."""
+        if self.target_amount <= 0:
+            raise ValueError("Target amount must be positive")
+        if self.current_saved < 0:
+            raise ValueError("Current saved amount cannot be negative")
+        if self.deadline <= datetime.now():
+            raise ValueError("Deadline must be in the future")
+    
+    def add_contribution(self, amount: float):
+        """Add a contribution to this savings goal.
+        
+        Args:
+            amount: Amount to add to current savings
+        """
+        if amount <= 0:
+            raise ValueError("Contribution amount must be positive")
+        self.current_saved += amount
+    
+    def progress_percentage(self) -> float:
+        """Calculate progress as a percentage.
+        
+        Returns:
+            Progress percentage (capped at 100.0)
+        """
+        if self.target_amount == 0:
+            return 0.0
+        progress = (self.current_saved / self.target_amount) * 100
+        return min(progress, 100.0)
+    
+    def remaining_amount(self) -> float:
+        """Calculate remaining amount to reach goal.
+        
+        Returns:
+            Amount still needed (can be negative if exceeded)
+        """
+        return self.target_amount - self.current_saved
+    
+    def is_exceeded(self) -> bool:
+        """Check if goal has been exceeded.
+        
+        Returns:
+            True if current savings exceed target
+        """
+        return self.current_saved > self.target_amount
+    
+    def excess_amount(self) -> float:
+        """Get amount by which goal is exceeded.
+        
+        Returns:
+            Excess amount (0 if not exceeded)
+        """
+        return max(0, self.current_saved - self.target_amount)
+    
+    def months_remaining(self) -> int:
+        """Calculate months remaining until deadline.
+        
+        Returns:
+            Number of months remaining
+        """
+        now = datetime.now()
+        if self.deadline <= now:
+            return 0
+        
+        # Calculate months difference
+        year_diff = self.deadline.year - now.year
+        month_diff = self.deadline.month - now.month
+        total_months = year_diff * 12 + month_diff
+        
+        # Adjust for day difference
+        if self.deadline.day < now.day:
+            total_months -= 1
+        
+        return max(0, total_months)
+    
+    def monthly_required(self) -> float:
+        """Calculate monthly savings needed to meet deadline.
+        
+        Returns:
+            Monthly amount needed (0 if deadline passed or goal met)
+        """
+        months_left = self.months_remaining()
+        if months_left == 0 or self.is_exceeded():
+            return 0.0
+        
+        remaining = self.remaining_amount()
+        return remaining / months_left if months_left > 0 else 0.0
+    
+    def is_on_track(self, monthly_savings: float) -> bool:
+        """Check if current monthly savings rate will meet the goal.
+        
+        Args:
+            monthly_savings: Current monthly savings rate
+            
+        Returns:
+            True if on track to meet goal by deadline
+        """
+        required = self.monthly_required()
+        return monthly_savings >= required
+    
+    def to_dict(self):
+        """Convert savings goal to dictionary."""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'target_amount': self.target_amount,
+            'current_saved': self.current_saved,
+            'deadline': self.deadline.isoformat(),
+            'progress_percentage': self.progress_percentage(),
+            'remaining_amount': self.remaining_amount(),
+            'is_exceeded': self.is_exceeded(),
+            'months_remaining': self.months_remaining(),
+            'monthly_required': self.monthly_required()
+        }
