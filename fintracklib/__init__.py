@@ -17,6 +17,7 @@ from fintracklib.exporter import TransactionExporter, BudgetExporter
 from fintracklib.recurring import RecurringExpenseManager
 from fintracklib.savings import SavingsGoalManager
 from fintracklib.tax import TaxCalculator
+from fintracklib.filter import TransactionFilter, filter_transactions
 from fintracklib.utils import (
     format_inr,
     get_fiscal_year,
@@ -43,6 +44,8 @@ __all__ = [
     'RecurringExpenseManager',
     'SavingsGoalManager',
     'TaxCalculator',
+    'TransactionFilter',
+    'filter_transactions',
     'format_inr',
     'get_fiscal_year',
     'format_amount_in_words',
