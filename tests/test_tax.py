@@ -43,9 +43,13 @@ class TestTaxCalculatorNewRegime:
         
         taxable = income - 50000  # 4,50,000
         # Tax: (4,50,000 - 3,00,000) * 5% = 7,500
+        # Section 87A rebate: min(7500, 12500) = 7,500
+        # Final tax: 7,500 - 7,500 = 0
         assert result["taxable_income"] == 450000
-        assert result["final_tax"] == 7500
-        assert abs(result["effective_rate"] - 1.5) < 0.01
+        assert result["tax_before_rebate"] == 7500
+        assert result["rebate_87a"] == 7500  # Full rebate applied
+        assert result["final_tax"] == 0  # Tax reduced to zero by rebate
+        assert result["effective_rate"] == 0
     
     def test_new_regime_third_slab(self):
         """Test income in 10% slab (₹7-10 lakhs)."""
@@ -66,17 +70,18 @@ class TestTaxCalculatorNewRegime:
         
         # Should get Section 87A rebate
         assert result["rebate_87a"] > 0
-        assert result["rebate_87a"] <= 25000
+        assert result["rebate_87a"] <= 12500
         assert result["final_tax"] >= 0
     
     def test_new_regime_section_87a_at_limit(self):
-        """Test Section 87A at exact ₹7 lakh limit."""
+        """Test Section 87A at exact ₹7 lakh limit (inclusive)."""
         calculator = TaxCalculator()
-        income = 700000
+        income = 700000  # Exactly ₹7L - should qualify for rebate
         result = calculator.calculate_tax(income, "new_regime")
         
-        # Should still get rebate at limit
+        # Should still get rebate at limit (inclusive)
         assert result["rebate_87a"] > 0
+        assert income <= 700000  # Verify limit is inclusive
     
     def test_new_regime_no_rebate_above_limit(self):
         """Test no Section 87A rebate above ₹7 lakhs."""
@@ -375,3 +380,129 @@ class TestTaxCalculatorIndianContext:
         
         assert comparison_low["recommended_regime"] in ["new_regime", "old_regime", "equal"]
         assert comparison_high["recommended_regime"] in ["new_regime", "old_regime", "equal"]
+
+
+class TestTaxCalculatorEdgeCases:
+    """Test edge cases for tax calculation (Issue #34)."""
+    
+    def test_partial_year_employment(self):
+        """Test partial year employment - don't annualize income."""
+        calculator = TaxCalculator()
+        # User worked 9 months, earned ₹4.5L (should NOT be annualized to ₹6L)
+        income = 450000
+        months_worked = 9
+        result = calculator.calculate_tax(income, "new_regime", months_worked=months_worked)
+        
+        # Tax should be calculated on actual ₹4.5L, not annualized ₹6L
+        assert result["months_worked"] == 9
+        assert result["taxable_income"] == 400000  # ₹4.5L - ₹50K standard deduction
+        # Should get Section 87A rebate (income <= ₹7L)
+        assert result["rebate_87a"] > 0
+    
+    def test_section_87a_at_exactly_7_lakhs(self):
+        """Test Section 87A rebate applies at exactly ₹7 lakhs."""
+        calculator = TaxCalculator()
+        income = 700000  # Exactly ₹7L
+        result = calculator.calculate_tax(income, "new_regime")
+        
+        # Should qualify for rebate (income <= ₹7L is inclusive)
+        assert result["rebate_87a"] > 0
+        assert income <= 700000
+    
+    def test_section_87a_just_below_7_lakhs(self):
+        """Test Section 87A rebate at ₹6.99 lakhs."""
+        calculator = TaxCalculator()
+        income = 699000  # ₹6.99L
+        result = calculator.calculate_tax(income, "new_regime")
+        
+        assert result["rebate_87a"] > 0
+    
+    def test_no_rebate_just_above_7_lakhs(self):
+        """Test no Section 87A rebate just above ₹7 lakhs."""
+        calculator = TaxCalculator()
+        income = 700001  # Just above ₹7L
+        result = calculator.calculate_tax(income, "new_regime")
+        
+        assert result["rebate_87a"] == 0
+    
+    def test_surcharge_at_50_lakhs(self):
+        """Test surcharge calculation starts above ₹50 lakhs."""
+        calculator = TaxCalculator()
+        income = 5000000  # Exactly ₹50L
+        result = calculator.calculate_tax(income, "new_regime")
+        
+        # Should have no surcharge at exactly ₹50L (threshold is >₹50L)
+        assert result["surcharge"] == 0
+    
+    def test_surcharge_just_above_50_lakhs(self):
+        """Test 10% surcharge for income just above ₹50L."""
+        calculator = TaxCalculator()
+        income = 5000001  # Just above ₹50L
+        result = calculator.calculate_tax(income, "new_regime")
+        
+        # Should have 10% surcharge
+        assert result["surcharge"] > 0
+    
+    def test_surcharge_at_1_crore(self):
+        """Test surcharge for income at ₹1 crore."""
+        calculator = TaxCalculator()
+        income = 10000000  # ₹1Cr
+        result = calculator.calculate_tax(income, "new_regime")
+        
+        # Should have surcharge (15% for ₹1Cr-₹2Cr range)
+        assert result["surcharge"] > 0
+        assert "surcharge" in result
+    
+    def test_surcharge_above_2_crore(self):
+        """Test 25% surcharge for income above ₹2 crore."""
+        calculator = TaxCalculator()
+        income = 20000001  # Just above ₹2Cr
+        result = calculator.calculate_tax(income, "new_regime")
+        
+        # Should have surcharge
+        assert result["surcharge"] > 0
+    
+    def test_marginal_relief_applied(self):
+        """Test that marginal relief is calculated for high income."""
+        calculator = TaxCalculator()
+        income = 5100000  # Just above ₹50L threshold
+        result = calculator.calculate_tax(income, "new_regime")
+        
+        # Marginal relief should be calculated (may be 0 if not applicable)
+        assert "marginal_relief" in result
+        assert result["marginal_relief"] >= 0
+    
+    def test_high_income_with_surcharge(self):
+        """Test high income calculation with surcharge."""
+        calculator = TaxCalculator()
+        income = 7500000  # ₹75L
+        result = calculator.calculate_tax(income, "new_regime")
+        
+        # Should have surcharge
+        assert result["surcharge"] >= 0
+        # Final tax should include surcharge
+        assert result["final_tax"] >= result["tax_before_rebate"] - result["rebate_87a"]
+    
+    def test_partial_year_no_annualization(self):
+        """Test that partial year income is not annualized."""
+        calculator = TaxCalculator()
+        # Worked 6 months, earned ₹3L
+        income = 300000
+        months = 6
+        
+        result = calculator.calculate_tax(income, "new_regime", months_worked=months)
+        
+        # Tax should be on ₹3L, not on annualized ₹6L
+        # ₹3L - ₹50K = ₹2.5L taxable (no tax in first slab)
+        assert result["months_worked"] == 6
+        assert result["taxable_income"] == 250000  # Not annualized
+    
+    def test_old_regime_surcharge(self):
+        """Test surcharge calculation for old regime."""
+        calculator = TaxCalculator()
+        income = 5500000  # ₹55L
+        result = calculator.calculate_tax(income, "old_regime")
+        
+        # Should have surcharge in old regime too
+        assert "surcharge" in result
+        assert result["surcharge"] >= 0

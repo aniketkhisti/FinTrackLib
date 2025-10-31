@@ -32,30 +32,35 @@ class TaxCalculator:
     
     # Section 87A rebate limit (new regime)
     REBATE_87A_LIMIT = 700000  # ₹7 lakhs
-    REBATE_87A_AMOUNT = 25000  # Maximum rebate ₹25,000 (FY 2024-25)
+    REBATE_87A_AMOUNT = 12500  # Maximum rebate ₹12,500 (FY 2024-25)
     
     def __init__(self):
         """Initialize the tax calculator."""
         pass
     
     def calculate_tax(self, income: float, regime: str = "new_regime",
-                      deduction_80c: float = 0.0, deduction_80d: float = 0.0) -> Dict:
+                      deduction_80c: float = 0.0, deduction_80d: float = 0.0,
+                      months_worked: Optional[int] = None) -> Dict:
         """Calculate income tax based on income and regime.
         
         Args:
-            income: Annual income in INR
+            income: Actual income earned in INR (not annualized)
             regime: Tax regime - "new_regime" or "old_regime" (default: "new_regime")
             deduction_80c: 80C deduction amount (for old regime only)
             deduction_80d: 80D deduction amount (for old regime only)
+            months_worked: Number of months worked (for partial year). If None, assumes full year (12 months)
             
         Returns:
             Dictionary containing:
             - taxable_income: Income after deductions
             - tax_before_rebate: Tax calculated before rebate
             - rebate_87a: Section 87A rebate amount
+            - surcharge: Surcharge amount (for high income)
+            - marginal_relief: Marginal relief amount (if applicable)
             - final_tax: Final tax payable
             - effective_rate: Effective tax rate as percentage
             - regime_used: Which regime was used
+            - months_worked: Number of months worked (if partial year)
         """
         if income < 0:
             raise ValueError("Income cannot be negative")
@@ -63,12 +68,20 @@ class TaxCalculator:
         if regime not in ["new_regime", "old_regime"]:
             raise ValueError("Regime must be 'new_regime' or 'old_regime'")
         
+        # Handle partial year employment - use actual income, don't annualize
+        if months_worked is not None:
+            if months_worked < 1 or months_worked > 12:
+                raise ValueError("months_worked must be between 1 and 12")
+            # Use actual income as-is for partial year calculations
+            # Tax is calculated on actual income, not annualized
+            pass
+        
         if regime == "new_regime":
-            return self._calculate_new_regime(income)
+            return self._calculate_new_regime(income, months_worked)
         else:
-            return self._calculate_old_regime(income, deduction_80c, deduction_80d)
+            return self._calculate_old_regime(income, deduction_80c, deduction_80d, months_worked)
     
-    def _calculate_new_regime(self, income: float) -> Dict:
+    def _calculate_new_regime(self, income: float, months_worked: Optional[int] = None) -> Dict:
         """Calculate tax under new tax regime.
         
         New regime features:
@@ -82,25 +95,40 @@ class TaxCalculator:
         # Calculate tax based on slabs
         tax_before_rebate = self._calculate_tax_by_slabs(taxable_income, self.NEW_REGIME_SLABS)
         
-        # Apply Section 87A rebate (for income up to ₹7 lakhs)
+        # Apply Section 87A rebate (for income up to ₹7 lakhs, inclusive)
         rebate_87a = 0.0
         if income <= self.REBATE_87A_LIMIT:
             rebate_87a = min(tax_before_rebate, self.REBATE_87A_AMOUNT)
         
-        final_tax = max(0, tax_before_rebate - rebate_87a)
+        # Calculate surcharge for high income (new regime)
+        surcharge = self._calculate_surcharge(tax_before_rebate, income)
+        
+        # Calculate marginal relief for surcharge
+        marginal_relief = self._calculate_marginal_relief(income, tax_before_rebate, surcharge)
+        surcharge_after_relief = max(0, surcharge - marginal_relief)
+        
+        # Final tax = tax_before_rebate - rebate + surcharge (after marginal relief)
+        final_tax = max(0, tax_before_rebate - rebate_87a + surcharge_after_relief)
         effective_rate = (final_tax / income * 100) if income > 0 else 0.0
         
-        return {
+        result = {
             "taxable_income": taxable_income,
             "tax_before_rebate": tax_before_rebate,
             "rebate_87a": rebate_87a,
+            "surcharge": surcharge_after_relief,
+            "marginal_relief": marginal_relief,
             "final_tax": final_tax,
             "effective_rate": effective_rate,
             "regime_used": "new_regime"
         }
+        
+        if months_worked is not None:
+            result["months_worked"] = months_worked
+        
+        return result
     
     def _calculate_old_regime(self, income: float, deduction_80c: float, 
-                             deduction_80d: float) -> Dict:
+                             deduction_80d: float, months_worked: Optional[int] = None) -> Dict:
         """Calculate tax under old tax regime.
         
         Old regime features:
@@ -122,19 +150,34 @@ class TaxCalculator:
         
         # No Section 87A rebate in old regime (only applicable to new regime)
         rebate_87a = 0.0
-        final_tax = tax_before_rebate
+        
+        # Calculate surcharge for high income (old regime)
+        surcharge = self._calculate_surcharge(tax_before_rebate, income)
+        
+        # Calculate marginal relief for surcharge
+        marginal_relief = self._calculate_marginal_relief(income, tax_before_rebate, surcharge)
+        surcharge_after_relief = max(0, surcharge - marginal_relief)
+        
+        final_tax = tax_before_rebate + surcharge_after_relief
         effective_rate = (final_tax / income * 100) if income > 0 else 0.0
         
-        return {
+        result = {
             "taxable_income": taxable_income,
             "tax_before_rebate": tax_before_rebate,
             "rebate_87a": rebate_87a,
+            "surcharge": surcharge_after_relief,
+            "marginal_relief": marginal_relief,
             "final_tax": final_tax,
             "effective_rate": effective_rate,
             "regime_used": "old_regime",
             "deduction_80c": deduction_80c,
             "deduction_80d": deduction_80d
         }
+        
+        if months_worked is not None:
+            result["months_worked"] = months_worked
+        
+        return result
     
     def _calculate_tax_by_slabs(self, income: float, slabs: list) -> float:
         """Calculate tax based on tax slabs.
@@ -156,6 +199,87 @@ class TaxCalculator:
             tax += (taxable_in_slab * rate) / 100
         
         return tax
+    
+    def _calculate_surcharge(self, tax_before_rebate: float, income: float) -> float:
+        """Calculate surcharge based on income level.
+        
+        Surcharge rates (FY 2024-25):
+        - 10% for income ₹50L-₹1Cr
+        - 15% for income ₹1Cr-₹2Cr
+        - 25% for income >₹2Cr
+        
+        Args:
+            tax_before_rebate: Tax calculated before rebate
+            income: Annual income
+            
+        Returns:
+            Surcharge amount
+        """
+        if income <= 5000000:  # Up to ₹50 lakhs
+            return 0.0
+        elif income <= 10000000:  # ₹50L-₹1Cr
+            return tax_before_rebate * 0.10
+        elif income <= 20000000:  # ₹1Cr-₹2Cr
+            return tax_before_rebate * 0.15
+        else:  # Above ₹2Cr
+            return tax_before_rebate * 0.25
+    
+    def _calculate_marginal_relief(self, income: float, tax_before_rebate: float, 
+                                   surcharge: float) -> float:
+        """Calculate marginal relief for surcharge.
+        
+        Marginal relief ensures that additional tax (tax + surcharge) doesn't exceed
+        the additional income earned above the threshold.
+        
+        Formula: Relief = (tax + surcharge) - (income - threshold) - tax_at_threshold
+        
+        Args:
+            income: Annual income
+            tax_before_rebate: Tax calculated before rebate
+            surcharge: Surcharge amount
+            
+        Returns:
+            Marginal relief amount (if applicable)
+        """
+        if surcharge == 0:
+            return 0.0
+        
+        # Thresholds for marginal relief
+        if income > 5000000 and income <= 10000000:  # ₹50L-₹1Cr
+            threshold = 5000000
+            # Calculate tax at threshold (₹50L)
+            # For simplicity, using approximate calculation
+            # In practice, this would need exact tax calculation at threshold
+            threshold_tax_approx = tax_before_rebate * (threshold / income)
+            excess_income = income - threshold
+            excess_tax = tax_before_rebate + surcharge - threshold_tax_approx
+            
+            # Marginal relief = excess tax - excess income
+            if excess_tax > excess_income:
+                relief = excess_tax - excess_income
+                return min(relief, surcharge)
+        
+        elif income > 10000000 and income <= 20000000:  # ₹1Cr-₹2Cr
+            threshold = 10000000
+            threshold_tax_approx = tax_before_rebate * (threshold / income)
+            excess_income = income - threshold
+            excess_tax = tax_before_rebate + surcharge - threshold_tax_approx
+            
+            if excess_tax > excess_income:
+                relief = excess_tax - excess_income
+                return min(relief, surcharge)
+        
+        elif income > 20000000:  # Above ₹2Cr
+            threshold = 20000000
+            threshold_tax_approx = tax_before_rebate * (threshold / income)
+            excess_income = income - threshold
+            excess_tax = tax_before_rebate + surcharge - threshold_tax_approx
+            
+            if excess_tax > excess_income:
+                relief = excess_tax - excess_income
+                return min(relief, surcharge)
+        
+        return 0.0
     
     def compare_regimes(self, income: float, deduction_80c: float = 0.0,
                        deduction_80d: float = 0.0) -> Dict:
