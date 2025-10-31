@@ -2,6 +2,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Optional
+from calendar import monthrange
 
 
 @dataclass
@@ -175,16 +176,14 @@ class RecurringExpense:
                 month = 1
                 year += 1
             
-            # Handle day overflow (e.g., Jan 31 -> Feb 28)
+            # Handle day overflow (e.g., Jan 31 -> Feb 28, Mar 31 -> Apr 30)
+            # If the day doesn't exist in the target month, use the last day of that month
             day = current.day
-            while True:
-                try:
-                    return datetime(year, month, day, current.hour, current.minute)
-                except ValueError:
-                    # Day doesn't exist in this month, try previous day
-                    day -= 1
-                    if day < 1:
-                        raise ValueError("Unable to calculate next monthly date")
+            max_day = monthrange(year, month)[1]  # Get last day of target month
+            if day > max_day:
+                day = max_day  # Use last day if original day exceeds month length
+            
+            return datetime(year, month, day, current.hour, current.minute)
         
         elif self.frequency == 'yearly':
             year = current.year + 1

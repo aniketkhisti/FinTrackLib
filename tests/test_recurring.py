@@ -140,6 +140,116 @@ def test_calculate_next_due_date_monthly_edge_case():
     assert next_date == expected
 
 
+def test_calculate_next_due_date_monthly_31st_non_leap_feb():
+    """Test monthly calculation: Jan 31 -> Feb 28 in non-leap year."""
+    due_date = datetime(2023, 1, 31, 10, 0)
+    recurring = RecurringExpense(
+        amount=15000.0,
+        description="Rent",
+        frequency="monthly",
+        next_due_date=due_date
+    )
+    
+    next_date = recurring.calculate_next_due_date()
+    # 2023 is not a leap year, so Feb has 28 days
+    expected = datetime(2023, 2, 28, 10, 0)
+    assert next_date == expected
+
+
+def test_calculate_next_due_date_monthly_31st_to_30_day_month():
+    """Test monthly calculation: Mar 31 -> Apr 30."""
+    due_date = datetime(2024, 3, 31, 10, 0)
+    recurring = RecurringExpense(
+        amount=15000.0,
+        description="Rent",
+        frequency="monthly",
+        next_due_date=due_date
+    )
+    
+    next_date = recurring.calculate_next_due_date()
+    # April has 30 days
+    expected = datetime(2024, 4, 30, 10, 0)
+    assert next_date == expected
+
+
+def test_calculate_next_due_date_monthly_31st_to_nov():
+    """Test monthly calculation: Oct 31 -> Nov 30."""
+    due_date = datetime(2024, 10, 31, 10, 0)
+    recurring = RecurringExpense(
+        amount=15000.0,
+        description="Rent",
+        frequency="monthly",
+        next_due_date=due_date
+    )
+    
+    next_date = recurring.calculate_next_due_date()
+    # November has 30 days
+    expected = datetime(2024, 11, 30, 10, 0)
+    assert next_date == expected
+
+
+def test_calculate_next_due_date_monthly_30th_to_feb():
+    """Test monthly calculation: Jan 30 -> Feb 28/29."""
+    # Test with non-leap year
+    due_date = datetime(2023, 1, 30, 10, 0)
+    recurring = RecurringExpense(
+        amount=15000.0,
+        description="Rent",
+        frequency="monthly",
+        next_due_date=due_date
+    )
+    
+    next_date = recurring.calculate_next_due_date()
+    # Feb 30 doesn't exist, should use Feb 28 (non-leap year)
+    expected = datetime(2023, 2, 28, 10, 0)
+    assert next_date == expected
+
+
+def test_calculate_next_due_date_monthly_29th_to_feb():
+    """Test monthly calculation: Jan 29 -> Feb 29 (leap year) or Feb 28 (non-leap)."""
+    # Test with leap year
+    due_date = datetime(2024, 1, 29, 10, 0)
+    recurring = RecurringExpense(
+        amount=15000.0,
+        description="Rent",
+        frequency="monthly",
+        next_due_date=due_date
+    )
+    
+    next_date = recurring.calculate_next_due_date()
+    # 2024 is a leap year, so Feb has 29 days
+    expected = datetime(2024, 2, 29, 10, 0)
+    assert next_date == expected
+    
+    # Test with non-leap year
+    recurring.next_due_date = datetime(2023, 1, 29, 10, 0)
+    next_date = recurring.calculate_next_due_date()
+    # 2023 is not a leap year, so Feb has 28 days
+    expected = datetime(2023, 2, 28, 10, 0)
+    assert next_date == expected
+
+
+def test_calculate_next_due_date_monthly_31st_all_edge_months():
+    """Test monthly calculation for all months that don't have 31 days."""
+    # May 31 -> Jun 30
+    due_date = datetime(2024, 5, 31, 10, 0)
+    recurring = RecurringExpense(
+        amount=15000.0,
+        description="Rent",
+        frequency="monthly",
+        next_due_date=due_date
+    )
+    assert recurring.calculate_next_due_date() == datetime(2024, 6, 30, 10, 0)
+    
+    # Aug 31 -> Sep 30
+    recurring.next_due_date = datetime(2024, 8, 31, 10, 0)
+    assert recurring.calculate_next_due_date() == datetime(2024, 9, 30, 10, 0)
+    
+    # Dec 31 -> Jan 31 (year rollover)
+    recurring.next_due_date = datetime(2024, 12, 31, 10, 0)
+    assert recurring.calculate_next_due_date() == datetime(2025, 1, 31, 10, 0)
+
+
 def test_calculate_next_due_date_yearly():
     """Test calculating next due date for yearly frequency."""
     due_date = datetime(2024, 10, 25, 10, 0)
