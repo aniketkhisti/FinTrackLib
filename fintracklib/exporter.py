@@ -45,7 +45,10 @@ class TransactionExporter:
         
         # Write data
         for txn in self.transactions:
-            date_str = txn.date.strftime(date_format)
+            # Use date() to avoid timezone-related date shifts
+            # This preserves the date portion regardless of timezone
+            date_obj = txn.date.date() if hasattr(txn.date, 'date') else txn.date
+            date_str = date_obj.strftime(date_format)
             amount_str = format_inr(txn.amount)
             category = txn.category or 'Uncategorized'
             writer.writerow([date_str, txn.description, amount_str, category])
