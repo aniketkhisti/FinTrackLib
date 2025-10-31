@@ -53,6 +53,69 @@ def test_transaction_csv_custom_date_format(sample_transactions):
     assert "2024/10/26" in csv_data
 
 
+def test_transaction_csv_default_date_format_dd_mm_yyyy(sample_transactions):
+    """Test CSV export uses DD-MM-YYYY format by default."""
+    exporter = TransactionExporter(sample_transactions)
+    csv_data = exporter.to_csv()
+    
+    # Should use DD-MM-YYYY format
+    assert "25-10-2024" in csv_data
+    assert "26-10-2024" in csv_data
+    assert "28-10-2024" in csv_data
+    # Should NOT contain ISO format
+    assert "2024-10-25" not in csv_data
+
+
+def test_transaction_csv_readable_headers(sample_transactions):
+    """Test CSV export has readable column headers."""
+    exporter = TransactionExporter(sample_transactions)
+    csv_data = exporter.to_csv()
+    
+    # Headers should be properly capitalized
+    assert "Date,Description,Amount (₹),Category" in csv_data
+    # Should not have lowercase headers
+    assert "date,description,amount" not in csv_data
+
+
+def test_transaction_csv_timezone_preservation():
+    """Test CSV export preserves date regardless of timezone/time component."""
+    from datetime import datetime, timezone, timedelta
+    
+    # Create transaction with time component
+    txn_with_time = Transaction(
+        amount=100.0,
+        description="Test with time",
+        date=datetime(2024, 10, 25, 14, 30, 0)  # 2:30 PM
+    )
+    
+    # Create transaction with timezone
+    ist_timezone = timezone(timedelta(hours=5, minutes=30))
+    txn_with_tz = Transaction(
+        amount=200.0,
+        description="Test with timezone",
+        date=datetime(2024, 10, 26, 0, 0, 0, tzinfo=ist_timezone)
+    )
+    
+    exporter = TransactionExporter([txn_with_time, txn_with_tz])
+    csv_data = exporter.to_csv()
+    
+    # Dates should be preserved correctly (DD-MM-YYYY format)
+    assert "25-10-2024" in csv_data
+    assert "26-10-2024" in csv_data
+    # Should not include time component
+    assert "14:30" not in csv_data
+
+
+def test_transaction_csv_iso_format_option(sample_transactions):
+    """Test CSV export can use ISO format when explicitly requested."""
+    exporter = TransactionExporter(sample_transactions)
+    csv_data = exporter.to_csv(date_format="%Y-%m-%d")
+    
+    # Should use ISO format when explicitly requested
+    assert "2024-10-25" in csv_data
+    assert "2024-10-26" in csv_data
+
+
 def test_transaction_csv_uncategorized(sample_transactions):
     """Test CSV export handles uncategorized transactions."""
     uncategorized_txn = Transaction(amount=500.0, description="Random expense")
